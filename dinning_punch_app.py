@@ -51,7 +51,7 @@ if uploaded_file:
             df = df.dropna(subset=["Category"])
 
             # Pivot the table
-            pivot_df = df.pivot_table(index=["EmployeeID", "Name", "Department", "Category"], 
+            pivot_df = df.pivot_table(index=["EmployeeID", "FirstName", "Department", "Category"], 
                                     columns="Date", 
                                     values="Time", 
                                     aggfunc=lambda x: ', '.join(map(str, x)))
