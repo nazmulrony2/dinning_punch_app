@@ -6,14 +6,14 @@ import os
 st.title("Dining Punch Time Categorization App")
 st.write("""
 ### Instructions:
-1. **Upload a CSV File** with **4 columns**:  
+1. **Upload a CSV File** with **5 columns**:  
    - `EmployeeID` (First column)  
    - `Name` (Second column)  
-   - `Date` (Third column)  
-   - `Time` (Fourth column)  
+   - `Department` (Third column)  
+   - `Date` (Fourth column, format: DD-MM-YYYY)  
+   - `Time` (Fifth column)  
 2. **The file should contain punch times**, and the app will categorize them into:  
    - **Dinner** (19:00 - 23:00)  
-   - **Sehri** (02:30 - 05:30)  
    - **Launch** (12:00 - 15:00)  
    - **Breakfast** (06:00 - 09:00)  
 3. **Download the Processed CSV** after conversion.
@@ -28,48 +28,46 @@ if uploaded_file:
         df = pd.read_csv(uploaded_file)
 
         # Ensure required columns exist
-        required_columns = ["EmployeeID", "Name", "Date", "Time"]
+        required_columns = ["EmployeeID", "FirstName", "Department", "Date", "Time"]
         if not all(col in df.columns for col in required_columns):
-            st.error("Uploaded file must have these columns: EmployeeID, Name, Date, Time")
+            st.error("Uploaded file must have these columns: EmployeeID, Name, Department, Date, Time")
         else:
             # Convert Date and Time columns
-            df["Date"] = pd.to_datetime(df["Date"])
+            df["Date"] = pd.to_datetime(df["Date"], format='%d-%m-%Y').dt.strftime('%d-%m-%Y')  # Format to DD-MM-YYYY
             df["Time"] = pd.to_datetime(df["Time"], format='%H:%M:%S').dt.time
 
             # Define time segments
             def categorize_time(time):
-                if pd.to_datetime("19:00:00").time() <= time <= pd.to_datetime("23:00:00").time():
+                if pd.to_datetime("19:00:00").time() <= time <= pd.to_datetime("23:30:00").time():
                     return "Dinner"
-                elif pd.to_datetime("02:30:00").time() <= time <= pd.to_datetime("05:30:00").time():
-                    return "Sehri"
-                elif pd.to_datetime("12:00:00").time() <= time <= pd.to_datetime("15:00:00").time():
+                elif pd.to_datetime("12:00:00").time() <= time <= pd.to_datetime("15:30:00").time():
                     return "Launch"
-                elif pd.to_datetime("06:00:00").time() <= time <= pd.to_datetime("09:00:00").time():
+                elif pd.to_datetime("05:30:00").time() <= time <= pd.to_datetime("09:50:00").time():
                     return "Breakfast"
-                return None  # Ignore other times
+                return None
 
             # Apply category function
             df["Category"] = df["Time"].apply(categorize_time)
-            df = df.dropna(subset=["Category"])  # Remove rows without a valid category
+            df = df.dropna(subset=["Category"])
 
-            # Pivot the table to show time punches by category and date
-            pivot_df = df.pivot_table(index=["EmployeeID", "Name", "Category"], 
-                                      columns="Date", 
-                                      values="Time", 
-                                      aggfunc=lambda x: ', '.join(map(str, x)))
+            # Pivot the table
+            pivot_df = df.pivot_table(index=["EmployeeID", "Name", "Department", "Category"], 
+                                    columns="Date", 
+                                    values="Time", 
+                                    aggfunc=lambda x: ', '.join(map(str, x)))
 
-            # Reset index
+            # Reset index and clean format
             pivot_df.reset_index(inplace=True)
+            pivot_df.columns.name = None  # Remove 'Date' label from columns
 
-            # Display dataframe in Streamlit
+            # Display dataframe
             st.write("### Processed Data:")
             st.dataframe(pivot_df)
 
-            # Save the processed file
+            # Save and download
             output_filename = "Total_punches_dinning1-6.csv"
             pivot_df.to_csv(output_filename, index=False)
-
-            # Provide download link
+            
             with open(output_filename, "rb") as file:
                 st.download_button(label="Download Processed CSV", data=file, file_name=output_filename, mime="text/csv")
 
